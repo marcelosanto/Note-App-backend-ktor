@@ -1,6 +1,10 @@
 package com.xyz.marcelo
 
+import com.xyz.marcelo.authentication.JwtService
+import com.xyz.marcelo.authentication.hash
+import com.xyz.marcelo.data.model.User
 import com.xyz.marcelo.repository.DatabaseFactory
+import com.xyz.marcelo.repository.repo
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -18,6 +22,10 @@ fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 fun Application.module(testing: Boolean = false) {
 
     DatabaseFactory.init()
+    val db = repo()
+    val jwtService = JwtService()
+    val hashFunction = { s: String -> hash(s) }
+
 
     install(Sessions) {
         cookie<MySession>("MY_SESSION") {
@@ -41,6 +49,15 @@ fun Application.module(testing: Boolean = false) {
         get("/note/{id}") {
             val id = call.parameters["id"]
             call.respondText("$id")
+        }
+
+        get("/token") {
+            val email = call.request.queryParameters["email"]!!
+            val password = call.request.queryParameters["password"]!!
+            val username = call.request.queryParameters["username"]!!
+
+            val user = User(email, hashFunction(password), username)
+            call.respond(jwtService.generateToken(user))
         }
 
         route("/notes") {
